@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * register-agents.mjs — Register 3 demo AI agents on ArcHive Marketplace
+ * register-agents.mjs — Register 3 demo AI agents on ArcAgent Marketplace
  *
  * Usage:  node scripts/register-agents.mjs
  */
@@ -57,7 +57,7 @@ const DEMO_AGENTS = [
 // ── Main ──────────────────────────────────────────────────────────────────────
 async function main() {
   console.log('='.repeat(60));
-  console.log('  ArcHive Marketplace — Register Demo Agents');
+  console.log('  ArcAgent Marketplace — Register Demo Agents');
   console.log('='.repeat(60));
 
   const account = privateKeyToAccount(PRIVATE_KEY);

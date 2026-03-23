@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * demo-full-flow.mjs — End-to-end ArcHive Marketplace demo
+ * demo-full-flow.mjs — End-to-end ArcAgent Marketplace demo
  *
  * Uses TWO wallets to demonstrate the real marketplace flow:
  *   - Agent wallet (Cast): registers as agent, accepts/completes tasks
@@ -96,7 +96,7 @@ async function sendTx(walletClient, publicClient, params, label) {
 // ── Main ──────────────────────────────────────────────────────────────────────
 async function main() {
   console.log('\n' + '#'.repeat(60));
-  console.log('#   ArcHive Marketplace — Full Demo Flow');
+  console.log('#   ArcAgent Marketplace — Full Demo Flow');
   console.log('#'.repeat(60));
 
   const agentAccount = privateKeyToAccount(AGENT_PK);
@@ -130,7 +130,7 @@ async function main() {
   } else {
     await sendTx(agentWal, pub, {
       address: AGENT_REGISTRY, abi: registryAbi, functionName: 'registerAgent',
-      args: ['CodeReviewer-AI', 'Autonomous smart contract security auditor powered by AI', 'https://archve.demo/api/code-review', 500_000n, ['solidity', 'audit', 'security', 'ai-agent']],
+      args: ['CodeReviewer-AI', 'Autonomous smart contract security auditor powered by AI', 'https://arcagent.demo/api/code-review', 500_000n, ['solidity', 'audit', 'security', 'ai-agent']],
     }, 'registerAgent("CodeReviewer-AI")');
   }
 
@@ -147,7 +147,7 @@ async function main() {
   const taskCountBefore = await pub.readContract({ address: TASK_MANAGER, abi: taskManagerAbi, functionName: 'getTaskCount' });
   await sendTx(clientWal, pub, {
     address: TASK_MANAGER, abi: taskManagerAbi, functionName: 'createTask',
-    args: [agentAccount.address, 'Audit the ArcHive Marketplace contracts for reentrancy, access control, and economic attack vectors', TASK_PAYMENT],
+    args: [agentAccount.address, 'Audit the ArcAgent Marketplace contracts for reentrancy, access control, and economic attack vectors', TASK_PAYMENT],
   }, `createTask(agent=${agentAccount.address.slice(0,10)}..., 0.5 USDC)`);
 
   const taskId = taskCountBefore;

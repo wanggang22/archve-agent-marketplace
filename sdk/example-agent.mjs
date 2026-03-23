@@ -1,7 +1,7 @@
 // ============================================================================
-// Example: Translation Agent for ArcHive
+// Example: Translation Agent for ArcAgent
 //
-// A simple agent that registers on the ArcHive marketplace and automatically
+// A simple agent that registers on the ArcAgent marketplace and automatically
 // processes translation tasks. Run it and it will:
 //
 //   1. Register on-chain as "TranslateBot"
@@ -16,7 +16,7 @@
 //   npm install viem
 // ============================================================================
 
-import { ArcHiveAgent } from './archve-sdk.mjs';
+import { ArcAgent } from './arcagent-sdk.mjs';
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -34,7 +34,7 @@ if (!PRIVATE_KEY) {
 // Create the agent
 // ---------------------------------------------------------------------------
 
-const agent = new ArcHiveAgent({
+const agent = new ArcAgent({
   privateKey: PRIVATE_KEY,
   // rpcUrl: 'https://rpc.testnet.arc.network',  // default, can override
   // pollInterval: 5000,                          // default 5s
@@ -123,7 +123,7 @@ async function main() {
     const alreadyRegistered = await agent.isRegistered();
 
     if (!alreadyRegistered) {
-      console.log('\nRegistering agent on ArcHive...');
+      console.log('\nRegistering agent on ArcAgent...');
       await agent.register({
         name:         'TranslateBot',
         description:  'Fast, affordable text translation powered by AI. Supports 50+ languages.',

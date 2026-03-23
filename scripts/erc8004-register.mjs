@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
- * erc8004-register.mjs — ERC-8004 AI Agent Identity Registration for ArcHive Marketplace
+ * erc8004-register.mjs — ERC-8004 AI Agent Identity Registration for ArcAgent Marketplace
  *
- * Integrates ERC-8004 identity layer with the ArcHive AgentRegistry:
+ * Integrates ERC-8004 identity layer with the ArcAgent AgentRegistry:
  *   1. Check if agent already has an ERC-8004 identity
  *   2. If not, register a new AI Agent identity on IdentityRegistry
  *   3. Give self-feedback on ReputationRegistry
  *   4. Create a validation request on ValidationRegistry
- *   5. Link the ERC-8004 identity to the ArcHive agent profile
+ *   5. Link the ERC-8004 identity to the ArcAgent agent profile
  *
  * Usage:  node scripts/erc8004-register.mjs
  *
@@ -32,7 +32,7 @@ const IDENTITY_REGISTRY   = '0x8004A818BFB912233c491871b3d84c89A494BD9e';
 const REPUTATION_REGISTRY = '0x8004B663056A597Dffe9eCcC1965A193B7388713';
 const VALIDATION_REGISTRY = '0x8004Cb1BF31DAf7788923b405b754f57acEB4272';
 
-// ArcHive contracts
+// ArcAgent contracts
 const AGENT_REGISTRY = '0x7b291ce5286C5698FdD6425e6CFfC8AD503D6B42';
 const TASK_MANAGER   = '0x24f9Fc5569Dab324862f4C634f1Fa7F587DB47d7';
 
@@ -91,13 +91,13 @@ function keccak(input) {
 // ── Main Flow ────────────────────────────────────────────────────────────────
 
 console.log('='.repeat(62));
-console.log('  ERC-8004 Identity Registration for ArcHive Marketplace');
+console.log('  ERC-8004 Identity Registration for ArcAgent Marketplace');
 console.log('='.repeat(62));
 console.log(`\n  Wallet:              ${SELF}`);
 console.log(`  IdentityRegistry:    ${IDENTITY_REGISTRY}`);
 console.log(`  ReputationRegistry:  ${REPUTATION_REGISTRY}`);
 console.log(`  ValidationRegistry:  ${VALIDATION_REGISTRY}`);
-console.log(`  ArcHive AgentReg:    ${AGENT_REGISTRY}`);
+console.log(`  ArcAgent AgentReg:    ${AGENT_REGISTRY}`);
 
 // ── Step 1: Check if agent already has an ERC-8004 identity ──────────────────
 console.log('\n--- Step 1: Check existing ERC-8004 identity ---');
@@ -181,7 +181,7 @@ if (!agentId) {
 // ── Step 3: Give self-feedback on ReputationRegistry ─────────────────────────
 console.log('\n--- Step 3: Self-feedback on ReputationRegistry ---');
 
-const feedbackTag = 'archve_marketplace_verified';
+const feedbackTag = 'arcagent_marketplace_verified';
 const feedbackScore = 90 + Math.floor(Math.random() * 10); // 90-99
 const tagHash = keccak(feedbackTag);
 
@@ -195,9 +195,9 @@ send(
 // ── Step 4: Create validation request on ValidationRegistry ──────────────────
 console.log('\n--- Step 4: Validation request on ValidationRegistry ---');
 
-const reqLabel = `archve_identity_validation_agent${agentId}_${Date.now()}`;
+const reqLabel = `arcagent_identity_validation_agent${agentId}_${Date.now()}`;
 const reqHash = keccak(reqLabel);
-const requestURI = `ipfs://bafkreiarchve-agent-${agentId}`;
+const requestURI = `ipfs://bafkreiarcagent-agent-${agentId}`;
 
 // The owner requests validation from themselves (self-validation for demo)
 // In production, a dedicated validator address would be used
@@ -213,7 +213,7 @@ send(
   'validationResponse',
   VALIDATION_REGISTRY,
   'validationResponse(bytes32,uint8,string,bytes32,string)',
-  `${reqHash} 100 "" ${ZERO_B32} "archve_verified"`,
+  `${reqHash} 100 "" ${ZERO_B32} "arcagent_verified"`,
 );
 
 // Verify validation status
@@ -226,14 +226,14 @@ if (valStatus) {
   console.log(`  [i] Validation status: ${valStatus.slice(0, 120)}...`);
 }
 
-// ── Step 5: Link ERC-8004 identity to ArcHive agent profile ──────────────────
-console.log('\n--- Step 5: Link ERC-8004 identity to ArcHive AgentRegistry ---');
+// ── Step 5: Link ERC-8004 identity to ArcAgent agent profile ──────────────────
+console.log('\n--- Step 5: Link ERC-8004 identity to ArcAgent AgentRegistry ---');
 
-// Check if already registered on ArcHive
+// Check if already registered on ArcAgent
 const isRegistered = castCall(AGENT_REGISTRY, 'isRegistered(address)(bool)', SELF);
 
 if (isRegistered && isRegistered.includes('true')) {
-  console.log('  [i] Agent already registered on ArcHive AgentRegistry.');
+  console.log('  [i] Agent already registered on ArcAgent AgentRegistry.');
 
   // Read existing agent profile
   const agentInfo = castCall(
@@ -242,12 +242,12 @@ if (isRegistered && isRegistered.includes('true')) {
     SELF,
   );
   if (agentInfo) {
-    console.log(`  [i] Current ArcHive profile: ${agentInfo.slice(0, 200)}`);
+    console.log(`  [i] Current ArcAgent profile: ${agentInfo.slice(0, 200)}`);
   }
 
   // Update the agent's description to include the ERC-8004 Agent ID
   // This links the two registries together on-chain
-  const updatedDesc = `ERC-8004 Verified Agent (ID: ${agentId}) | ArcHive Marketplace AI`;
+  const updatedDesc = `ERC-8004 Verified Agent (ID: ${agentId}) | ArcAgent Marketplace AI`;
   const updateResult = send(
     `updateAgent (linking ERC-8004 ID ${agentId})`,
     AGENT_REGISTRY,
@@ -259,22 +259,22 @@ if (isRegistered && isRegistered.includes('true')) {
     // updateAgent may not exist with that signature; try alternative approach
     // Emit a linking event by calling a generic method or just log the association
     console.log(`  [i] Could not call updateAgent. The link is recorded off-chain:`);
-    console.log(`      ArcHive wallet:  ${SELF}`);
+    console.log(`      ArcAgent wallet:  ${SELF}`);
     console.log(`      ERC-8004 ID:     ${agentId}`);
     console.log(`      Identity NFT:    ${IDENTITY_REGISTRY} #${agentId}`);
   }
 } else {
-  // Not yet registered on ArcHive — register now with ERC-8004 reference in description
-  console.log('  [i] Agent not yet registered on ArcHive. Registering with ERC-8004 link...');
+  // Not yet registered on ArcAgent — register now with ERC-8004 reference in description
+  console.log('  [i] Agent not yet registered on ArcAgent. Registering with ERC-8004 link...');
 
-  const name = `ArcHive-Agent-${agentId}`;
+  const name = `ArcAgent-Agent-${agentId}`;
   const description = `ERC-8004 Verified Agent (ID: ${agentId}) | AI Marketplace Service`;
-  const endpoint = `https://api.archve.demo/agent-${agentId}`;
+  const endpoint = `https://api.arcagent.demo/agent-${agentId}`;
   const price = 500000; // 0.5 USDC
   const skills = '["ai","erc8004","verified"]';
 
   send(
-    `registerAgent on ArcHive (name="${name}")`,
+    `registerAgent on ArcAgent (name="${name}")`,
     AGENT_REGISTRY,
     'registerAgent(string,string,string,uint256,string[])',
     `"${name}" "${description}" "${endpoint}" ${price} ${skills}`,
@@ -283,14 +283,14 @@ if (isRegistered && isRegistered.includes('true')) {
 
 // ── Summary ──────────────────────────────────────────────────────────────────
 console.log('\n' + '='.repeat(62));
-console.log('  ERC-8004 x ArcHive Integration Summary');
+console.log('  ERC-8004 x ArcAgent Integration Summary');
 console.log('='.repeat(62));
 console.log(`  Wallet:              ${SELF}`);
 console.log(`  ERC-8004 Agent ID:   ${agentId}`);
 console.log(`  Identity NFT:        ${IDENTITY_REGISTRY} #${agentId}`);
 console.log(`  Reputation Score:    ${feedbackScore} (${feedbackTag})`);
 console.log(`  Validation:          ${reqHash.slice(0, 18)}...`);
-console.log(`  ArcHive Registry:    ${AGENT_REGISTRY}`);
+console.log(`  ArcAgent Registry:    ${AGENT_REGISTRY}`);
 console.log(`  Explorer:            https://testnet.arcscan.app/address/${SELF}`);
 console.log(`  Transactions:        ${ok} succeeded, ${fail} failed`);
 console.log('='.repeat(62));

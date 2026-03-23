@@ -1,10 +1,10 @@
 // ============================================================================
-// ArcHive Agent SDK
-// Turn any script into an ArcHive marketplace agent in minutes.
+// ArcAgent Agent SDK
+// Turn any script into an ArcAgent marketplace agent in minutes.
 //
 // Usage:
-//   import { ArcHiveAgent } from './archve-sdk.mjs';
-//   const agent = new ArcHiveAgent({ privateKey: '0x...' });
+//   import { ArcAgent } from './arcagent-sdk.mjs';
+//   const agent = new ArcAgent({ privateKey: '0x...' });
 //   await agent.register({ name: 'MyAgent', ... });
 //   agent.onTask(async (task) => { return 'result'; });
 //   await agent.start();
@@ -260,12 +260,12 @@ const TaskStateName = Object.freeze(
 );
 
 // ---------------------------------------------------------------------------
-// ArcHiveAgent
+// ArcAgent
 // ---------------------------------------------------------------------------
 
-export class ArcHiveAgent extends EventEmitter {
+export class ArcAgent extends EventEmitter {
   /**
-   * Create a new ArcHiveAgent instance.
+   * Create a new ArcAgent instance.
    *
    * @param {Object}  opts
    * @param {string}  opts.privateKey  - Hex private key (e.g. '0xabc...')
@@ -277,7 +277,7 @@ export class ArcHiveAgent extends EventEmitter {
     super();
 
     if (!privateKey) {
-      throw new Error('ArcHiveAgent: privateKey is required');
+      throw new Error('ArcAgent: privateKey is required');
     }
 
     // Resolve addresses (allow per-contract overrides)
@@ -366,7 +366,7 @@ export class ArcHiveAgent extends EventEmitter {
   // -------------------------------------------------------------------------
 
   /**
-   * Register this wallet as an agent on the ArcHive marketplace.
+   * Register this wallet as an agent on the ArcAgent marketplace.
    *
    * @param {Object}   opts
    * @param {string}   opts.name         - Human-readable agent name
@@ -378,7 +378,7 @@ export class ArcHiveAgent extends EventEmitter {
    */
   async register({ name, description, endpoint, pricePerTask, skills = [] }) {
     if (!name || !endpoint) {
-      throw new Error('ArcHiveAgent: name and endpoint are required');
+      throw new Error('ArcAgent: name and endpoint are required');
     }
 
     const priceWei = parseUnits(String(pricePerTask || 0), 6);
@@ -487,7 +487,7 @@ export class ArcHiveAgent extends EventEmitter {
    */
   onTask(handler) {
     if (typeof handler !== 'function') {
-      throw new Error('ArcHiveAgent: onTask handler must be a function');
+      throw new Error('ArcAgent: onTask handler must be a function');
     }
     this._taskHandler = handler;
   }
@@ -502,7 +502,7 @@ export class ArcHiveAgent extends EventEmitter {
       return;
     }
     if (!this._taskHandler) {
-      throw new Error('ArcHiveAgent: call onTask(handler) before start()');
+      throw new Error('ArcAgent: call onTask(handler) before start()');
     }
 
     this._running = true;
@@ -818,7 +818,7 @@ export class ArcHiveAgent extends EventEmitter {
 
   _log(msg) {
     const ts = new Date().toISOString().slice(11, 19);
-    console.log(`[ArcHive ${ts}] ${msg}`);
+    console.log(`[ArcAgent ${ts}] ${msg}`);
   }
 
   _sleep(ms) {

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * check-status.mjs — Query and display ArcHive Marketplace state
+ * check-status.mjs — Query and display ArcAgent Marketplace state
  *
  * Reads on-chain data and prints:
  *   - All registered agents with details
@@ -78,7 +78,7 @@ function formatDate(timestamp) {
 // ── Main ──────────────────────────────────────────────────────────────────────
 async function main() {
   console.log('\n' + '#'.repeat(60));
-  console.log('#   ArcHive Marketplace — Status Dashboard');
+  console.log('#   ArcAgent Marketplace — Status Dashboard');
   console.log('#'.repeat(60));
   console.log(`\n  RPC: ${ARC_RPC}`);
 
