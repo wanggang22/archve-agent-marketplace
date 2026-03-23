@@ -1573,21 +1573,12 @@ async function loadStats() {
       const agentCount = Number(BigInt(agentCountRes));
       document.getElementById('statAgents').textContent = agentCount;
 
-      const taskCountRes = await rpcCall(CONTRACTS.TaskManager, SEL.getTaskCount);
-      const taskCount = Number(BigInt(taskCountRes));
+      // Use getMarketStats() for efficient single-call stats (totalTasks, approvedTasks, volume)
+      const marketStatsRes = await rpcCall(CONTRACTS.TaskManager, '0xff4cd5b9');
+      const msRaw = marketStatsRes.replace(/^0x/, '');
+      const taskCount = Number(decodeUint(msRaw, 0));
+      const vol = Number(decodeUint(msRaw, 64)) / 1e6;
       document.getElementById('statTasks').textContent = taskCount;
-
-      let totalVolume = 0n;
-      for (let i = 0; i < Math.min(taskCount, 100); i++) {
-        try {
-          const taskData = SEL.getTask + encodeUint(i);
-          const taskRes = await rpcCall(CONTRACTS.TaskManager, taskData);
-          const raw = taskRes.replace(/^0x/, '');
-          const payment = decodeUint(raw, 3 * 32); // 4th field: payment
-          totalVolume += payment;
-        } catch(e) { break; }
-      }
-      const vol = Number(totalVolume) / 1e6;
       document.getElementById('statVolume').textContent = vol >= 1000 ? (vol/1000).toFixed(1) + 'K' : vol.toFixed(2);
     })(), 10000, 'Stats loading');
 
@@ -2063,19 +2054,21 @@ async function loadDashboard() {
            8: completedAt (uint256)
            9: disputedAt (uint256)
         */
-        const client = decodeAddress(tRaw, 0);
-        const agent = decodeAddress(tRaw, 32);
-        const descOffset = Number(decodeUint(tRaw, 64));
-        const payment = decodeUint(tRaw, 96);
-        const resultOffset = Number(decodeUint(tRaw, 128));
-        const state = Number(decodeUint(tRaw, 160));
-        const createdAt = Number(decodeUint(tRaw, 192));
-        const acceptedAt = Number(decodeUint(tRaw, 224));
-        const completedAt = Number(decodeUint(tRaw, 256));
-        const disputedAt = Number(decodeUint(tRaw, 288));
+        // getTask returns struct with outer offset pointer (first 32 bytes)
+        const tOff = Number(decodeUint(tRaw, 0)) * 2; // offset in hex chars
+        const client = decodeAddress(tRaw, tOff + 0);
+        const agent = decodeAddress(tRaw, tOff + 32);
+        const descOffset = Number(decodeUint(tRaw, tOff + 64));
+        const payment = decodeUint(tRaw, tOff + 96);
+        const resultOffset = Number(decodeUint(tRaw, tOff + 128));
+        const state = Number(decodeUint(tRaw, tOff + 160));
+        const createdAt = Number(decodeUint(tRaw, tOff + 192));
+        const acceptedAt = Number(decodeUint(tRaw, tOff + 224));
+        const completedAt = Number(decodeUint(tRaw, tOff + 256));
+        const disputedAt = Number(decodeUint(tRaw, tOff + 288));
 
-        const description = decodeStringAt(tRaw, descOffset);
-        const resultHash = decodeStringAt(tRaw, resultOffset);
+        const description = decodeStringAt(tRaw, tOff + descOffset);
+        const resultHash = decodeStringAt(tRaw, tOff + resultOffset);
 
         tasks.push({ id, client, agent, description, payment, resultHash, state, createdAt, acceptedAt, completedAt, disputedAt });
       } catch(e) { console.error('Task fetch error:', e); }
@@ -2344,11 +2337,13 @@ async function loadActivity() {
         const tRes = await rpcCall(CONTRACTS.TaskManager, tData);
         const tRaw = tRes.replace(/^0x/, '');
 
-        const client = decodeAddress(tRaw, 0);
-        const agent = decodeAddress(tRaw, 32);
-        const payment = Number(decodeUint(tRaw, 96)) / 1e6;
-        const state = Number(decodeUint(tRaw, 160));
-        const createdAt = Number(decodeUint(tRaw, 192));
+        // getTask returns a struct with an outer offset pointer (first 32 bytes = 0x20)
+        const outerOff = Number(decodeUint(tRaw, 0)) * 2; // offset in hex chars
+        const client = decodeAddress(tRaw, outerOff + 0);
+        const agent = decodeAddress(tRaw, outerOff + 32);
+        const payment = Number(decodeUint(tRaw, outerOff + 96)) / 1e6;
+        const state = Number(decodeUint(tRaw, outerOff + 160));
+        const createdAt = Number(decodeUint(tRaw, outerOff + 192));
 
         const shortClient = client.slice(0,6) + '...' + client.slice(-4);
         const shortAgent = agent.slice(0,6) + '...' + agent.slice(-4);
