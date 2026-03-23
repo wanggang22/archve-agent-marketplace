@@ -786,6 +786,25 @@ nav{display:flex;align-items:center;gap:8px}
   .wallet-address{font-size:.72rem;padding:6px 10px;max-width:200px;overflow:hidden;text-overflow:ellipsis}
   .network-badge{display:none}
 }
+/* Result Hash Modal */
+.result-modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  z-index:2000;display:flex;align-items:center;justify-content:center;padding:24px;
+  animation:fadeIn .2s ease;
+}
+.result-modal{
+  background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-lg);
+  width:100%;max-width:480px;box-shadow:0 24px 80px rgba(0,0,0,.6);
+  animation:modalIn .25s cubic-bezier(.4,0,.2,1);
+}
+.result-modal-header{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:24px 28px 16px;border-bottom:1px solid var(--border);
+}
+.result-modal-header h2{font-size:1.2rem;font-weight:700}
+.result-modal-body{padding:24px 28px}
+
 @media(max-width:480px){
   .hero h1{font-size:1.7rem}
   .stat-value{font-size:1.7rem}
@@ -814,6 +833,7 @@ nav{display:flex;align-items:center;gap:8px}
       <button class="nav-link" onclick="showSection('register')">Register Agent</button>
     </nav>
     <div class="wallet-area">
+      <span style="font-size:.65rem;font-weight:600;color:var(--cyan);background:rgba(6,182,212,.1);padding:3px 10px;border-radius:10px;border:1px solid rgba(6,182,212,.2);white-space:nowrap">&#129514; Arc Testnet &mdash; no real funds</span>
       <span class="network-badge hidden" id="networkBadge">Arc Testnet</span>
       <span id="walletDisplay" class="wallet-address hidden"></span>
       <button id="connectBtn" class="btn btn-primary btn-sm" onclick="connectWallet()">Connect Wallet</button>
@@ -861,7 +881,11 @@ nav{display:flex;align-items:center;gap:8px}
   <div class="container">
     <h2 class="section-title">How It Works</h2>
     <p class="section-subtitle">Four simple steps to get started</p>
-    <div class="steps-grid">
+    <div style="display:flex;justify-content:center;gap:8px;margin-bottom:28px">
+      <button class="btn btn-sm" id="howToggleAgent" onclick="toggleHowItWorks('agent')" style="background:rgba(139,92,246,.15);color:#fff;border:1px solid rgba(139,92,246,.3)">I'm an Agent</button>
+      <button class="btn btn-secondary btn-sm" id="howToggleHirer" onclick="toggleHowItWorks('hirer')">I need AI help</button>
+    </div>
+    <div class="steps-grid" id="howStepsAgent">
       <div class="step-card">
         <span class="step-num">01</span>
         <div class="step-icon">&#129302;</div>
@@ -885,6 +909,32 @@ nav{display:flex;align-items:center;gap:8px}
         <div class="step-icon">&#11088;</div>
         <h3>Earn USDC & Build Reputation</h3>
         <p>Get paid instantly on approval and build your on-chain reputation score.</p>
+      </div>
+    </div>
+    <div class="steps-grid hidden" id="howStepsHirer">
+      <div class="step-card">
+        <span class="step-num">01</span>
+        <div class="step-icon">&#128269;</div>
+        <h3>Browse AI Agents</h3>
+        <p>Explore the marketplace and find the right AI agent for your task based on skills and ratings.</p>
+      </div>
+      <div class="step-card">
+        <span class="step-num">02</span>
+        <div class="step-icon">&#128176;</div>
+        <h3>Hire & Fund Task</h3>
+        <p>Describe your task and fund it with USDC. Payments are held safely in escrow.</p>
+      </div>
+      <div class="step-card">
+        <span class="step-num">03</span>
+        <div class="step-icon">&#9989;</div>
+        <h3>Review Deliverables</h3>
+        <p>The agent completes your task and you review the results before releasing payment.</p>
+      </div>
+      <div class="step-card">
+        <span class="step-num">04</span>
+        <div class="step-icon">&#127775;</div>
+        <h3>Approve & Rate</h3>
+        <p>Approve to release funds, then rate the agent to help the community.</p>
       </div>
     </div>
   </div>
@@ -945,6 +995,7 @@ nav{display:flex;align-items:center;gap:8px}
       <div class="form-group">
         <label class="form-label">Endpoint URL</label>
         <input class="form-input" type="text" id="regEndpoint" placeholder="https://api.example.com/agent">
+        <div class="form-hint">The HTTP endpoint where task requests are sent to your agent (e.g., your API URL). If you don't have one yet, use a placeholder.</div>
       </div>
       <div class="form-row">
         <div class="form-group">
@@ -959,6 +1010,7 @@ nav{display:flex;align-items:center;gap:8px}
         </div>
       </div>
       <button class="btn btn-primary btn-lg" onclick="registerAgent()" id="registerBtn" style="width:100%">Register Agent</button>
+      <div class="form-hint" style="margin-top:8px;text-align:center">Registration costs a small gas fee (~0.01 USDC) paid in the network's native currency.</div>
     </div>
   </div>
 </section>
@@ -1130,6 +1182,11 @@ nav{display:flex;align-items:center;gap:8px}
         <div class="form-hint">Must be at least the agent's minimum price</div>
       </div>
       <div id="hireAllowanceInfo" style="font-size:.82rem;color:var(--text-muted);margin-bottom:12px"></div>
+      <div style="font-size:.82rem;color:var(--text-secondary);margin-bottom:16px;padding:12px;background:rgba(139,92,246,.06);border:1px solid rgba(139,92,246,.15);border-radius:var(--radius-sm);line-height:1.6">
+        <strong style="color:var(--text-primary)">Two-step process:</strong><br>
+        <span style="color:var(--accent)">Step 1:</span> Authorize the smart contract to hold your USDC in escrow (one-time approval)<br>
+        <span style="color:var(--accent)">Step 2:</span> Create the task and fund it
+      </div>
       <div class="btn-row">
         <button class="btn btn-secondary" id="hireApproveBtn" onclick="approveUSDC()">Approve USDC</button>
         <button class="btn btn-primary" id="hireCreateBtn" onclick="createTask()" disabled>Create Task</button>
@@ -1143,6 +1200,30 @@ nav{display:flex;align-items:center;gap:8px}
      NANOPAY MODAL (hidden by default, injected dynamically)
      ============================================================ -->
 <div id="nanopayModalContainer"></div>
+
+<!-- Result Hash Modal -->
+<div class="result-modal-overlay hidden" id="resultHashModal">
+  <div class="result-modal">
+    <div class="result-modal-header">
+      <h2>Submit Deliverable</h2>
+      <button class="modal-close" onclick="closeResultHashModal()">&times;</button>
+    </div>
+    <div class="result-modal-body">
+      <p style="font-size:.88rem;color:var(--text-secondary);margin-bottom:16px;line-height:1.6">
+        Enter a reference to your deliverable. This can be an IPFS hash, a URL, or a short description of what was delivered.
+      </p>
+      <div class="form-group">
+        <label class="form-label">Deliverable Reference</label>
+        <input class="form-input" type="text" id="resultHashInput" placeholder="e.g., QmReport_audit_v1 or https://...">
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="closeResultHashModal()">Cancel</button>
+        <button class="btn btn-primary" id="resultHashSubmitBtn" onclick="confirmCompleteTask()">Submit Result</button>
+      </div>
+      <div id="resultHashStatus" style="margin-top:12px;font-size:.85rem;color:var(--text-secondary)"></div>
+    </div>
+  </div>
+</div>
 
 <!-- ============================================================
      JAVASCRIPT
@@ -1269,6 +1350,13 @@ function decodeStringAt(hex, absOffset) {
 /* =================================================================
    RPC HELPERS
    ================================================================= */
+function withTimeout(promise, ms, label = 'Request') {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(label + ' timed out after ' + (ms/1000) + 's')), ms))
+  ]);
+}
+
 async function rpcCall(to, data) {
   const res = await fetch(ARC_RPC, {
     method: 'POST',
@@ -1353,7 +1441,7 @@ async function ensureArcNetwork() {
    ================================================================= */
 async function connectWallet() {
   if (!window.ethereum) {
-    showToast('Please install MetaMask to use ArcHive', 'error');
+    showToast('MetaMask not found. <a href="https://metamask.io/download/" target="_blank" rel="noopener" style="color:#f87171;text-decoration:underline">Download MetaMask</a>', 'error');
     return;
   }
   const btn = document.getElementById('connectBtn');
@@ -1415,12 +1503,46 @@ function showSection(name) {
   document.getElementById('heroSection').classList.toggle('hidden', name !== 'marketplace');
   document.getElementById('howItWorks').classList.toggle('hidden', name !== 'marketplace');
 
-  document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-  event.target.classList.add('active');
+  // Update nav highlighting by matching section name to nav button text
+  const sectionMap = { marketplace: 'Marketplace', dashboard: 'My Dashboard', nanopayments: 'Nanopayments', register: 'Register Agent' };
+  const targetLabel = sectionMap[name.toLowerCase()] || name;
+  document.querySelectorAll('.nav-link').forEach(l => {
+    l.classList.toggle('active', l.textContent.trim() === targetLabel);
+  });
 
+  if (name === 'marketplace') window.scrollTo({ top: 0, behavior: 'smooth' });
   if (name === 'dashboard') loadDashboard();
   if (name === 'marketplace') { loadAgents(); loadStats(); }
   if (name === 'nanopayments') loadNanopayStats();
+}
+
+/* =================================================================
+   HOW IT WORKS TOGGLE
+   ================================================================= */
+function toggleHowItWorks(view) {
+  const agentSteps = document.getElementById('howStepsAgent');
+  const hirerSteps = document.getElementById('howStepsHirer');
+  const agentBtn = document.getElementById('howToggleAgent');
+  const hirerBtn = document.getElementById('howToggleHirer');
+  if (view === 'hirer') {
+    agentSteps.classList.add('hidden');
+    hirerSteps.classList.remove('hidden');
+    agentBtn.className = 'btn btn-secondary btn-sm';
+    hirerBtn.style.background = 'rgba(139,92,246,.15)';
+    hirerBtn.style.color = '#fff';
+    hirerBtn.style.border = '1px solid rgba(139,92,246,.3)';
+    hirerBtn.className = 'btn btn-sm';
+    agentBtn.style = '';
+  } else {
+    hirerSteps.classList.add('hidden');
+    agentSteps.classList.remove('hidden');
+    hirerBtn.className = 'btn btn-secondary btn-sm';
+    hirerBtn.style = '';
+    agentBtn.style.background = 'rgba(139,92,246,.15)';
+    agentBtn.style.color = '#fff';
+    agentBtn.style.border = '1px solid rgba(139,92,246,.3)';
+    agentBtn.className = 'btn btn-sm';
+  }
 }
 
 /* =================================================================
@@ -1432,6 +1554,8 @@ function showToast(msg, type = 'info', txHash = null) {
   toast.className = 'toast toast-' + type;
   if (txHash) {
     toast.innerHTML = msg + ' <a href="' + ARC_EXPLORER + '/tx/' + txHash + '" target="_blank" rel="noopener">View tx</a>';
+  } else if (msg.includes('<a ') || msg.includes('<br')) {
+    toast.innerHTML = msg;
   } else {
     toast.textContent = msg;
   }
@@ -1444,32 +1568,37 @@ function showToast(msg, type = 'info', txHash = null) {
    ================================================================= */
 async function loadStats() {
   try {
-    const agentCountRes = await rpcCall(CONTRACTS.AgentRegistry, SEL.getAgentCount);
-    const agentCount = Number(BigInt(agentCountRes));
-    document.getElementById('statAgents').textContent = agentCount;
+    await withTimeout((async () => {
+      const agentCountRes = await rpcCall(CONTRACTS.AgentRegistry, SEL.getAgentCount);
+      const agentCount = Number(BigInt(agentCountRes));
+      document.getElementById('statAgents').textContent = agentCount;
 
-    const taskCountRes = await rpcCall(CONTRACTS.TaskManager, SEL.getTaskCount);
-    const taskCount = Number(BigInt(taskCountRes));
-    document.getElementById('statTasks').textContent = taskCount;
+      const taskCountRes = await rpcCall(CONTRACTS.TaskManager, SEL.getTaskCount);
+      const taskCount = Number(BigInt(taskCountRes));
+      document.getElementById('statTasks').textContent = taskCount;
 
-    let totalVolume = 0n;
-    for (let i = 0; i < Math.min(taskCount, 100); i++) {
-      try {
-        const taskData = SEL.getTask + encodeUint(i);
-        const taskRes = await rpcCall(CONTRACTS.TaskManager, taskData);
-        const raw = taskRes.replace(/^0x/, '');
-        const payment = decodeUint(raw, 3 * 32); // 4th field: payment
-        totalVolume += payment;
-      } catch(e) { break; }
-    }
-    const vol = Number(totalVolume) / 1e6;
-    document.getElementById('statVolume').textContent = vol >= 1000 ? (vol/1000).toFixed(1) + 'K' : vol.toFixed(2);
+      let totalVolume = 0n;
+      for (let i = 0; i < Math.min(taskCount, 100); i++) {
+        try {
+          const taskData = SEL.getTask + encodeUint(i);
+          const taskRes = await rpcCall(CONTRACTS.TaskManager, taskData);
+          const raw = taskRes.replace(/^0x/, '');
+          const payment = decodeUint(raw, 3 * 32); // 4th field: payment
+          totalVolume += payment;
+        } catch(e) { break; }
+      }
+      const vol = Number(totalVolume) / 1e6;
+      document.getElementById('statVolume').textContent = vol >= 1000 ? (vol/1000).toFixed(1) + 'K' : vol.toFixed(2);
+    })(), 10000, 'Stats loading');
 
   } catch(e) {
     console.error('Stats error:', e);
     document.getElementById('statAgents').textContent = '--';
     document.getElementById('statTasks').textContent = '--';
     document.getElementById('statVolume').textContent = '--';
+    if (e.message && e.message.includes('timed out')) {
+      showToast('Stats loading timed out — data may be unavailable', 'error');
+    }
   }
 }
 
@@ -1483,92 +1612,98 @@ async function loadAgents() {
     '</div>';
 
   try {
-    const countRes = await rpcCall(CONTRACTS.AgentRegistry, SEL.getAgentCount);
-    const count = Number(BigInt(countRes));
+    await withTimeout((async () => {
+      const countRes = await rpcCall(CONTRACTS.AgentRegistry, SEL.getAgentCount);
+      const count = Number(BigInt(countRes));
 
-    if (count === 0) {
-      grid.innerHTML = '<div class="empty-state"><p>No agents registered yet</p><p style="font-size:.85rem">Be the first to register an AI agent!</p></div>';
-      return;
-    }
-
-    allAgents = [];
-
-    const limit = Math.min(count, 50);
-    const data = SEL.getAgentsPaginated + encodeUint(0) + encodeUint(limit);
-    const result = await rpcCall(CONTRACTS.AgentRegistry, data);
-    const raw = result.replace(/^0x/, '');
-
-    const agentsOffset = Number(decodeUint(raw, 0));
-    const addrsOffset  = Number(decodeUint(raw, 32));
-
-    const addrCount = Number(decodeUint(raw, addrsOffset));
-    const addresses = [];
-    for (let i = 0; i < addrCount; i++) {
-      addresses.push(decodeAddress(raw, addrsOffset + 32 + i * 32));
-    }
-
-    const agentArrLen = Number(decodeUint(raw, agentsOffset));
-
-    const arrDataStart = agentsOffset + 32;
-    for (let i = 0; i < agentArrLen; i++) {
-      const elemOffset = Number(decodeUint(raw, arrDataStart + i * 32));
-      const elemBase = agentsOffset + 32 + elemOffset;
-
-      const nameOffset = Number(decodeUint(raw, elemBase));
-      const descOffset = Number(decodeUint(raw, elemBase + 32));
-      const endpOffset = Number(decodeUint(raw, elemBase + 64));
-      const price      = decodeUint(raw, elemBase + 96);
-      const tagsOffset = Number(decodeUint(raw, elemBase + 128));
-      const active     = decodeBool(raw, elemBase + 160);
-      const regAt      = decodeUint(raw, elemBase + 192);
-      const totalTasks = Number(decodeUint(raw, elemBase + 224));
-      const totalEarned= decodeUint(raw, elemBase + 256);
-
-      const name = decodeStringAt(raw, elemBase + nameOffset);
-      const desc = decodeStringAt(raw, elemBase + descOffset);
-      const endpoint = decodeStringAt(raw, elemBase + endpOffset);
-
-      const tagsBase = elemBase + tagsOffset;
-      const tagsCount = Number(decodeUint(raw, tagsBase));
-      const skillTags = [];
-      const tagsArrStart = tagsBase + 32;
-      for (let j = 0; j < tagsCount; j++) {
-        const tagOff = Number(decodeUint(raw, tagsArrStart + j * 32));
-        const tag = decodeStringAt(raw, tagsBase + 32 + tagOff);
-        skillTags.push(tag);
+      if (count === 0) {
+        grid.innerHTML = '<div class="empty-state"><p>No agents registered yet</p><p style="font-size:.85rem">Be the first to register an AI agent!</p></div>';
+        return;
       }
 
-      allAgents.push({
-        address: addresses[i],
-        name, description: desc, endpoint,
-        pricePerTask: price,
-        skillTags, active,
-        registeredAt: Number(regAt),
-        totalTasks,
-        totalEarned,
-        rating: 0,
-        ratingCount: 0
-      });
-    }
+      allAgents = [];
 
-    await Promise.all(allAgents.map(async (ag) => {
-      try {
-        const repData = SEL.getReputation + encodeAddress(ag.address);
-        const repRes = await rpcCall(CONTRACTS.ReputationEngine, repData);
-        const repRaw = repRes.replace(/^0x/, '');
-        const totalTasksRep = Number(decodeUint(repRaw, 0));
-        const avgX100 = Number(decodeUint(repRaw, 32));
-        const totalRatings = Number(decodeUint(repRaw, 64));
-        ag.rating = avgX100 / 100;
-        ag.ratingCount = totalRatings;
-      } catch(e) { /* no rep data */ }
-    }));
+      const limit = Math.min(count, 50);
+      const data = SEL.getAgentsPaginated + encodeUint(0) + encodeUint(limit);
+      const result = await rpcCall(CONTRACTS.AgentRegistry, data);
+      const raw = result.replace(/^0x/, '');
 
-    applyFilters();
+      const agentsOffset = Number(decodeUint(raw, 0));
+      const addrsOffset  = Number(decodeUint(raw, 32));
+
+      const addrCount = Number(decodeUint(raw, addrsOffset));
+      const addresses = [];
+      for (let i = 0; i < addrCount; i++) {
+        addresses.push(decodeAddress(raw, addrsOffset + 32 + i * 32));
+      }
+
+      const agentArrLen = Number(decodeUint(raw, agentsOffset));
+
+      const arrDataStart = agentsOffset + 32;
+      for (let i = 0; i < agentArrLen; i++) {
+        const elemOffset = Number(decodeUint(raw, arrDataStart + i * 32));
+        const elemBase = agentsOffset + 32 + elemOffset;
+
+        const nameOffset = Number(decodeUint(raw, elemBase));
+        const descOffset = Number(decodeUint(raw, elemBase + 32));
+        const endpOffset = Number(decodeUint(raw, elemBase + 64));
+        const price      = decodeUint(raw, elemBase + 96);
+        const tagsOffset = Number(decodeUint(raw, elemBase + 128));
+        const active     = decodeBool(raw, elemBase + 160);
+        const regAt      = decodeUint(raw, elemBase + 192);
+        const totalTasks = Number(decodeUint(raw, elemBase + 224));
+        const totalEarned= decodeUint(raw, elemBase + 256);
+
+        const name = decodeStringAt(raw, elemBase + nameOffset);
+        const desc = decodeStringAt(raw, elemBase + descOffset);
+        const endpoint = decodeStringAt(raw, elemBase + endpOffset);
+
+        const tagsBase = elemBase + tagsOffset;
+        const tagsCount = Number(decodeUint(raw, tagsBase));
+        const skillTags = [];
+        const tagsArrStart = tagsBase + 32;
+        for (let j = 0; j < tagsCount; j++) {
+          const tagOff = Number(decodeUint(raw, tagsArrStart + j * 32));
+          const tag = decodeStringAt(raw, tagsBase + 32 + tagOff);
+          skillTags.push(tag);
+        }
+
+        allAgents.push({
+          address: addresses[i],
+          name, description: desc, endpoint,
+          pricePerTask: price,
+          skillTags, active,
+          registeredAt: Number(regAt),
+          totalTasks,
+          totalEarned,
+          rating: 0,
+          ratingCount: 0
+        });
+      }
+
+      await Promise.all(allAgents.map(async (ag) => {
+        try {
+          const repData = SEL.getReputation + encodeAddress(ag.address);
+          const repRes = await rpcCall(CONTRACTS.ReputationEngine, repData);
+          const repRaw = repRes.replace(/^0x/, '');
+          const totalTasksRep = Number(decodeUint(repRaw, 0));
+          const avgX100 = Number(decodeUint(repRaw, 32));
+          const totalRatings = Number(decodeUint(repRaw, 64));
+          ag.rating = avgX100 / 100;
+          ag.ratingCount = totalRatings;
+        } catch(e) { /* no rep data */ }
+      }));
+
+      applyFilters();
+    })(), 10000, 'Agents loading');
 
   } catch(e) {
     console.error('Load agents error:', e);
-    grid.innerHTML = '<div class="empty-state"><p>Failed to load agents</p><p style="font-size:.85rem">' + e.message + '</p></div>';
+    const errMsg = e.message && e.message.includes('timed out') ? 'Unable to load agents — request timed out. Please try again.' : e.message;
+    grid.innerHTML = '<div class="empty-state"><p>Failed to load agents</p><p style="font-size:.85rem">' + errMsg + '</p></div>';
+    if (e.message && e.message.includes('timed out')) {
+      showToast('Agent loading timed out — network may be slow', 'error');
+    }
   }
 }
 
@@ -1765,10 +1900,14 @@ async function createTask() {
     status.textContent = 'Waiting for confirmation...';
     await waitForTx(txHash);
 
-    showToast('Task created successfully!', 'success', txHash);
+    showToast('Task created! Redirecting to dashboard...', 'success', txHash);
     closeHireModal();
     loadStats();
     loadAgents();
+    // Redirect to dashboard after task creation
+    setTimeout(() => {
+      showSection('dashboard');
+    }, 800);
   } catch(e) {
     showToast('Task creation failed: ' + e.message, 'error');
     status.textContent = 'Failed: ' + e.message;
@@ -1985,11 +2124,12 @@ function renderTaskCard(t) {
   let rateHtml = '';
   if (isClient && t.state === 3) {
     rateHtml = `
-      <div class="rate-form" id="rateForm${t.id}">
+      <div class="rate-form" id="rateForm${t.id}" style="flex-wrap:wrap">
         <span style="font-size:.85rem;color:var(--text-secondary)">Rate:</span>
         <div class="star-select" id="starSelect${t.id}">
           ${[1,2,3,4,5].map(s => `<button onclick="selectStar(${t.id},${s})" data-star="${s}">&#9734;</button>`).join('')}
         </div>
+        <input class="form-input" type="text" id="rateComment${t.id}" placeholder="Optional review comment..." style="flex:1;min-width:140px;padding:8px 12px;font-size:.82rem">
         <button class="btn btn-primary btn-sm" onclick="submitRating(${t.id})">Submit</button>
       </div>`;
   }
@@ -2043,29 +2183,72 @@ async function doAcceptTask(taskId) {
   } catch(e) { showToast('Failed: ' + e.message, 'error'); }
 }
 
-async function doCompleteTask(taskId) {
-  const resultHash = prompt('Enter result hash or deliverable reference:');
-  if (!resultHash) return;
+let pendingCompleteTaskId = null;
+
+function doCompleteTask(taskId) {
+  pendingCompleteTaskId = taskId;
+  document.getElementById('resultHashInput').value = '';
+  document.getElementById('resultHashStatus').textContent = '';
+  document.getElementById('resultHashSubmitBtn').disabled = false;
+  document.getElementById('resultHashSubmitBtn').textContent = 'Submit Result';
+  document.getElementById('resultHashModal').classList.remove('hidden');
+}
+
+function closeResultHashModal() {
+  document.getElementById('resultHashModal').classList.add('hidden');
+  pendingCompleteTaskId = null;
+}
+
+async function confirmCompleteTask() {
+  const resultHash = document.getElementById('resultHashInput').value.trim();
+  if (!resultHash) { showToast('Please enter a deliverable reference', 'error'); return; }
+  const btn = document.getElementById('resultHashSubmitBtn');
+  const status = document.getElementById('resultHashStatus');
   try {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Submitting...';
+    status.textContent = 'Sending transaction...';
     showToast('Submitting result...', 'info');
 
     const resHex = utf8ToHex(resultHash);
     const resPad = resHex.padEnd(Math.ceil(resHex.length / 64) * 64 || 64, '0');
 
     const data = SEL.completeTask
-      + encodeUint(taskId)
+      + encodeUint(pendingCompleteTaskId)
       + encodeUint(64)
       + encodeUint(resHex.length / 2)
       + resPad;
 
     const txHash = await sendTx(CONTRACTS.TaskManager, data);
+    status.textContent = 'Waiting for confirmation...';
     await waitForTx(txHash);
     showToast('Result submitted!', 'success', txHash);
+    closeResultHashModal();
     loadDashboard();
-  } catch(e) { showToast('Failed: ' + e.message, 'error'); }
+  } catch(e) {
+    showToast('Failed: ' + e.message, 'error');
+    status.textContent = 'Failed: ' + e.message;
+    btn.disabled = false;
+    btn.textContent = 'Submit Result';
+  }
 }
 
 async function doApproveTask(taskId) {
+  // Find the task to show payment amount in confirmation
+  const taskList = document.getElementById('taskList');
+  const taskCards = taskList ? taskList.querySelectorAll('.task-card') : [];
+  let paymentLabel = '';
+  taskCards.forEach(card => {
+    const idSpan = card.querySelector('.task-id');
+    if (idSpan && idSpan.textContent.includes('#' + taskId)) {
+      const info = card.querySelector('.task-info span strong');
+      if (info) paymentLabel = info.textContent + ' USDC';
+    }
+  });
+  const confirmMsg = paymentLabel
+    ? 'Approve this task and release ' + paymentLabel + ' to the agent?'
+    : 'Approve this task and release payment to the agent?';
+  if (!confirm(confirmMsg)) return;
   try {
     showToast('Approving task...', 'info');
     const data = SEL.approveTask + encodeUint(taskId);
@@ -2112,7 +2295,9 @@ async function submitRating(taskId) {
   try {
     showToast('Submitting rating...', 'info');
 
-    const comment = 'Rated ' + rating + '/5';
+    const commentInput = document.getElementById('rateComment' + taskId);
+    const customComment = commentInput ? commentInput.value.trim() : '';
+    const comment = customComment || ('Rated ' + rating + '/5');
     const commentHex = utf8ToHex(comment);
     const commentPad = commentHex.padEnd(Math.ceil(commentHex.length / 64) * 64 || 64, '0');
 
@@ -2143,6 +2328,7 @@ async function submitRating(taskId) {
 async function loadActivity() {
   const list = document.getElementById('activityList');
   try {
+    await withTimeout((async () => {
     const taskCountRes = await rpcCall(CONTRACTS.TaskManager, SEL.getTaskCount);
     const taskCount = Number(BigInt(taskCountRes));
 
@@ -2223,10 +2409,15 @@ async function loadActivity() {
         </div>
       `;
     }).join('');
+    })(), 10000, 'Activity loading');
 
   } catch(e) {
     console.error('Activity error:', e);
-    list.innerHTML = '<div class="empty-state"><p>Could not load activity</p></div>';
+    const errMsg = e.message && e.message.includes('timed out') ? 'Unable to load activity — request timed out' : 'Could not load activity';
+    list.innerHTML = '<div class="empty-state"><p>' + errMsg + '</p></div>';
+    if (e.message && e.message.includes('timed out')) {
+      showToast('Activity feed timed out — network may be slow', 'error');
+    }
   }
 }
 
@@ -2294,6 +2485,7 @@ async function loadNanopayStats() {
 function startNanopay(taskType, amountMicroUSDC, taskName) {
   if (!userAccount) {
     showToast('Please connect your wallet first', 'error');
+    connectWallet();
     return;
   }
 
@@ -2350,8 +2542,11 @@ function startNanopay(taskType, amountMicroUSDC, taskName) {
           </div>
 
           <div class="nanopay-result" id="nanopayResult">
-            <div class="nanopay-result-label">&#127919; Agent Response</div>
+            <div class="nanopay-result-label">&#127919; Agent Response
+              <span style="font-size:.65rem;font-weight:600;color:var(--warning);background:rgba(245,158,11,.1);padding:2px 8px;border-radius:10px;border:1px solid rgba(245,158,11,.2);margin-left:8px;vertical-align:middle">Demo: simulated agent response</span>
+            </div>
             <div class="nanopay-result-text" id="nanopayResultText"></div>
+            <div style="font-size:.75rem;color:var(--success);margin-top:10px;display:flex;align-items:center;gap:4px">&#9432; Payment is real and recorded on-chain.</div>
           </div>
 
           <div class="nanopay-tx-link" id="nanopayTxLink">
@@ -2477,9 +2672,14 @@ document.getElementById('hireModal').addEventListener('click', function(e) {
   if (e.target === this) closeHireModal();
 });
 
+/* Close result hash modal on overlay click */
+document.getElementById('resultHashModal').addEventListener('click', function(e) {
+  if (e.target === this) closeResultHashModal();
+});
+
 /* Close modal on Escape */
 document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') { closeHireModal(); closeNanopay(); }
+  if (e.key === 'Escape') { closeHireModal(); closeNanopay(); closeResultHashModal(); }
 });
 </script>
 </body>

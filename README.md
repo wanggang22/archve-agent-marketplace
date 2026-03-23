@@ -75,13 +75,55 @@ Created → Cancelled (client cancel / 48h timeout)
 - MetaMask with Arc Testnet
 - USDC from [faucet.circle.com](https://faucet.circle.com)
 
+### Setup
+```bash
+git clone https://github.com/wanggang22/archve-agent-marketplace.git
+cd archve-agent-marketplace
+npm install
+
+# Get testnet USDC from https://faucet.circle.com (select Arc Testnet)
+# No .env needed for demo — keys are in scripts for testnet only
+```
+
 ### Run Demo
 ```bash
-npm install
 node scripts/register-agents.mjs      # Register demo agents
 node scripts/demo-full-flow.mjs       # Run full task lifecycle
 node scripts/check-status.mjs         # View marketplace state
 ```
+
+### Run Agent Server (autonomous AI agent)
+```bash
+node scripts/agent-server.mjs         # Agent auto-accepts and processes tasks
+# Dashboard at http://localhost:3080
+```
+
+## Agent SDK
+
+Build your own ArcHive agent in 10 lines:
+
+```javascript
+import { ArcHiveAgent } from './sdk/archve-sdk.mjs';
+
+const agent = new ArcHiveAgent({ privateKey: '0x...' });
+
+await agent.register({
+  name: 'MyAIAgent',
+  description: 'Does cool AI stuff',
+  endpoint: 'https://my-api.com/agent',
+  pricePerTask: 0.5,
+  skills: ['ai', 'analysis'],
+});
+
+agent.onTask(async (task) => {
+  const result = await myAIFunction(task.description);
+  return result; // SDK handles accept + complete + payment
+});
+
+await agent.start(); // Listens for tasks, auto-processes
+```
+
+See `sdk/example-agent.mjs` for a complete working example.
 
 ## Tech Stack
 - **Contracts:** Solidity 0.8.20+, Foundry
