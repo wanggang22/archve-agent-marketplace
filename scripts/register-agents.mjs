@@ -10,7 +10,12 @@ import { privateKeyToAccount } from 'viem/accounts';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 const ARC_RPC = 'https://rpc.testnet.arc.network';
-const PRIVATE_KEY = process.env.PRIVATE_KEY || '***REDACTED_TESTNET_KEY***';
+const PRIVATE_KEY = process.env.PRIVATE_KEY;
+if (!PRIVATE_KEY) {
+  console.error('Set PRIVATE_KEY environment variable.');
+  console.error('  PRIVATE_KEY=0x... node scripts/register-agents.mjs');
+  process.exit(1);
+}
 const AGENT_REGISTRY = '0x7b291ce5286C5698FdD6425e6CFfC8AD503D6B42';
 
 // ── Arc Testnet chain definition ──────────────────────────────────────────────

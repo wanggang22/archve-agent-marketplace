@@ -23,9 +23,16 @@ import { privateKeyToAccount } from 'viem/accounts';
 const ARC_RPC = 'https://rpc.testnet.arc.network';
 
 // Agent wallet (Cast wallet — registers as agent, does the work)
-const AGENT_PK = '***REDACTED_TESTNET_KEY***';
+// NEVER USE THESE KEYS ON MAINNET — testnet only!
+const AGENT_PK = process.env.AGENT_PRIVATE_KEY;
 // Client wallet (hires the agent)
-const CLIENT_PK = '***REDACTED_TESTNET_KEY***';
+const CLIENT_PK = process.env.CLIENT_PRIVATE_KEY;
+
+if (!AGENT_PK || !CLIENT_PK) {
+  console.error('Set AGENT_PRIVATE_KEY and CLIENT_PRIVATE_KEY environment variables.');
+  console.error('  AGENT_PRIVATE_KEY=0x... CLIENT_PRIVATE_KEY=0x... node scripts/demo-full-flow.mjs');
+  process.exit(1);
+}
 
 const AGENT_REGISTRY    = '0x7b291ce5286C5698FdD6425e6CFfC8AD503D6B42';
 const TASK_MANAGER      = '0x24f9Fc5569Dab324862f4C634f1Fa7F587DB47d7';

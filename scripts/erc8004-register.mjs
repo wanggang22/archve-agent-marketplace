@@ -22,10 +22,12 @@ const HOME = process.env.HOME || process.env.USERPROFILE;
 const CAST = resolve(HOME, '.foundry/versions/stable/cast.exe');
 const RPC  = 'https://rpc.testnet.arc.network';
 
-const PK   = process.env.PRIVATE_KEY
-  || '***REDACTED_TESTNET_KEY***';
-const SELF = process.env.WALLET_ADDRESS
-  || '***REDACTED_TESTNET_ADDR***';
+const PK   = process.env.PRIVATE_KEY;
+const SELF = process.env.WALLET_ADDRESS;
+if (!PK || !SELF) {
+  console.error('Set PRIVATE_KEY and WALLET_ADDRESS environment variables.');
+  process.exit(1);
+}
 
 // ERC-8004 contracts
 const IDENTITY_REGISTRY   = '0x8004A818BFB912233c491871b3d84c89A494BD9e';

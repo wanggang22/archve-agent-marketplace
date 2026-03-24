@@ -34,9 +34,11 @@ import express from 'express';
 const PORT    = Number(process.env.PORT) || 3080;
 const POLL_MS = Number(process.env.POLL_MS) || 5000;
 
-const AGENT_PK =
-  process.env.AGENT_PK ||
-  '***REDACTED_TESTNET_KEY***';
+const AGENT_PK = process.env.AGENT_PK;
+if (!AGENT_PK) {
+  console.error('Set AGENT_PK environment variable.');
+  process.exit(1);
+}
 
 const ARC_RPC         = 'https://rpc.testnet.arc.network';
 const AGENT_REGISTRY  = '0x7b291ce5286C5698FdD6425e6CFfC8AD503D6B42';
