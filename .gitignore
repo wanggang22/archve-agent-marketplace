@@ -15,3 +15,5 @@ package-lock.json
 Thumbs.db
 
 .vercel
+PRODUCT_INTRO.md
+USER_EXPERIENCE.md
