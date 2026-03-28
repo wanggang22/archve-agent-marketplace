@@ -837,6 +837,7 @@ nav{display:flex;align-items:center;gap:8px}
       <span class="network-badge hidden" id="networkBadge">Arc Testnet</span>
       <span id="walletDisplay" class="wallet-address hidden"></span>
       <button id="connectBtn" class="btn btn-primary btn-sm" onclick="connectWallet()">Connect Wallet</button>
+      <button id="disconnectBtn" class="btn btn-secondary btn-sm hidden" onclick="disconnectWallet()" style="padding:8px 12px;font-size:.75rem">Disconnect</button>
     </div>
   </div>
 </header>
@@ -963,7 +964,15 @@ nav{display:flex;align-items:center;gap:8px}
         <option value="10">Under 10 USDC</option>
         <option value="50">Under 50 USDC</option>
       </select>
+      <select class="filter-select" id="filterSort" onchange="applyFilters()">
+        <option value="default">Sort: Default</option>
+        <option value="rating-desc">Highest Rated</option>
+        <option value="price-asc">Price: Low to High</option>
+        <option value="price-desc">Price: High to Low</option>
+        <option value="tasks-desc">Most Tasks</option>
+      </select>
       <button class="btn btn-secondary btn-sm" onclick="loadAgents()">Refresh</button>
+      <button class="btn btn-secondary btn-sm" id="clearFiltersBtn" onclick="clearFilters()" style="display:none">Clear Filters</button>
     </div>
 
     <div id="agentsGrid" class="agents-grid">
@@ -1201,6 +1210,36 @@ nav{display:flex;align-items:center;gap:8px}
      NANOPAY MODAL (hidden by default, injected dynamically)
      ============================================================ -->
 <div id="nanopayModalContainer"></div>
+
+<!-- Agent Detail Modal -->
+<div class="modal-overlay hidden" id="agentDetailModal" onclick="if(event.target===this)closeAgentDetail()">
+  <div class="modal" style="max-width:720px;max-height:90vh;overflow-y:auto">
+    <div class="modal-header">
+      <div>
+        <h2 id="detailAgentName"></h2>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+          <span id="detailAgentStatus" class="agent-status-badge"></span>
+          <span id="detailAgentPrice" class="agent-price" style="font-size:.82rem"></span>
+        </div>
+        <div id="detailAgentAddr" style="font-family:var(--font-mono);font-size:.72rem;color:var(--text-muted);margin-top:6px;word-break:break-all"></div>
+      </div>
+      <button class="modal-close" onclick="closeAgentDetail()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+        <div style="text-align:center;padding:14px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm)"><div id="detailStatRating" style="font-size:1.2rem;font-weight:700;color:var(--accent)">--</div><div style="font-size:.7rem;color:var(--text-muted);text-transform:uppercase">Rating</div></div>
+        <div style="text-align:center;padding:14px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm)"><div id="detailStatTasks" style="font-size:1.2rem;font-weight:700;color:var(--accent)">--</div><div style="font-size:.7rem;color:var(--text-muted);text-transform:uppercase">Tasks</div></div>
+        <div style="text-align:center;padding:14px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm)"><div id="detailStatEarned" style="font-size:1.2rem;font-weight:700;color:var(--accent)">--</div><div style="font-size:.7rem;color:var(--text-muted);text-transform:uppercase">USDC Earned</div></div>
+        <div style="text-align:center;padding:14px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm)"><div id="detailStatUptime" style="font-size:1.2rem;font-weight:700;color:var(--accent)">--</div><div style="font-size:.7rem;color:var(--text-muted);text-transform:uppercase">Online</div></div>
+      </div>
+      <div style="margin-bottom:16px"><h3 style="font-size:.82rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;margin-bottom:8px">Description</h3><div id="detailAgentDesc" style="color:var(--text-secondary);font-size:.9rem;line-height:1.7"></div></div>
+      <div style="margin-bottom:16px"><h3 style="font-size:.82rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;margin-bottom:8px">Endpoint</h3><a id="detailAgentEndpoint" href="#" target="_blank" rel="noopener" style="font-family:var(--font-mono);font-size:.82rem;word-break:break-all"></a></div>
+      <div style="margin-bottom:16px"><h3 style="font-size:.82rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;margin-bottom:8px">Skills</h3><div class="skill-tags" id="detailAgentTags"></div></div>
+      <div style="margin-bottom:16px"><h3 style="font-size:.82rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;margin-bottom:8px">Reviews</h3><div id="detailAgentReviews" style="color:var(--text-muted);font-size:.85rem">No reviews yet.</div></div>
+      <button class="btn btn-primary btn-lg" id="detailHireBtn" style="width:100%" onclick="">Hire Agent</button>
+    </div>
+  </div>
+</div>
 
 <!-- Result Hash Modal -->
 <div class="result-modal-overlay hidden" id="resultHashModal">
@@ -1474,6 +1513,7 @@ function updateWalletUI() {
     btn.textContent = 'Connected';
     btn.disabled = true;
     btn.style.opacity = '.6';
+    document.getElementById('disconnectBtn').classList.remove('hidden');
     document.getElementById('dashboardNotConnected').classList.add('hidden');
     document.getElementById('dashboardContent').classList.remove('hidden');
   }
@@ -1703,6 +1743,7 @@ function applyFilters() {
   const search = document.getElementById('filterSearch').value.toLowerCase();
   const minRating = parseFloat(document.getElementById('filterRating').value);
   const maxPrice = parseFloat(document.getElementById('filterPrice').value);
+  const sortBy = document.getElementById('filterSort') ? document.getElementById('filterSort').value : 'default';
 
   let filtered = allAgents.filter(ag => {
     if (search && !ag.name.toLowerCase().includes(search) && !ag.skillTags.some(t => t.toLowerCase().includes(search)) && !ag.description.toLowerCase().includes(search)) return false;
@@ -1710,6 +1751,15 @@ function applyFilters() {
     if (maxPrice > 0 && Number(ag.pricePerTask) / 1e6 > maxPrice) return false;
     return true;
   });
+
+  if (sortBy === 'rating-desc') filtered.sort((a,b) => b.rating - a.rating);
+  else if (sortBy === 'price-asc') filtered.sort((a,b) => Number(a.pricePerTask) - Number(b.pricePerTask));
+  else if (sortBy === 'price-desc') filtered.sort((a,b) => Number(b.pricePerTask) - Number(a.pricePerTask));
+  else if (sortBy === 'tasks-desc') filtered.sort((a,b) => b.totalTasks - a.totalTasks);
+
+  const hasFilters = search || minRating > 0 || maxPrice > 0 || sortBy !== 'default';
+  var clearBtn = document.getElementById('clearFiltersBtn');
+  if (clearBtn) clearBtn.style.display = hasFilters ? 'inline-flex' : 'none';
 
   renderAgents(filtered);
 }
@@ -1724,7 +1774,7 @@ function renderAgents(agents) {
   grid.innerHTML = agents.map(ag => {
     const price = (Number(ag.pricePerTask) / 1e6).toFixed(2);
     const stars = renderStars(ag.rating);
-    const tags = ag.skillTags.map(t => '<span class="skill-tag">' + escapeHtml(t) + '</span>').join('');
+    const tags = ag.skillTags.map(t => '<span class="skill-tag" style="cursor:pointer" onclick="event.stopPropagation();filterByTag(\'' + escapeHtml(t).replace(/'/g,"\\'") + '\')">' + escapeHtml(t) + '</span>').join('');
     const shortAddr = ag.address.slice(0,6) + '...' + ag.address.slice(-4);
     const statusClass = ag.active ? 'active' : 'inactive';
     const statusLabel = ag.active ? 'Active' : 'Inactive';
@@ -1735,7 +1785,7 @@ function renderAgents(agents) {
     return `
       <div class="agent-card">
         <div class="agent-header">
-          <div class="agent-name">${escapeHtml(ag.name)}</div>
+          <div class="agent-name" style="cursor:pointer" onclick="openAgentDetail('${ag.address}')">${escapeHtml(ag.name)}</div>
           <div class="agent-price">${price} USDC</div>
         </div>
         <span class="agent-status-badge ${statusClass}"><span class="agent-status-dot ${statusClass}"></span>${statusLabel}</span>
@@ -2598,10 +2648,96 @@ document.getElementById('resultHashModal').addEventListener('click', function(e)
   if (e.target === this) closeResultHashModal();
 });
 
+/* Close agent detail modal on overlay click */
+document.getElementById('agentDetailModal').addEventListener('click', function(e) {
+  if (e.target === this) closeAgentDetail();
+});
+
 /* Close modal on Escape */
 document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') { closeHireModal(); closeNanopay(); closeResultHashModal(); }
+  if (e.key === 'Escape') { closeHireModal(); closeNanopay(); closeResultHashModal(); closeAgentDetail(); }
 });
+
+/* =================================================================
+   FRIENDLY ERROR MESSAGES
+   ================================================================= */
+function friendlyError(e) {
+  const msg = (e && e.message) ? e.message : String(e);
+  if (/user rejected|user denied|denied transaction/i.test(msg) || e?.code === 4001) return 'You cancelled the transaction in your wallet.';
+  if (/insufficient funds/i.test(msg)) return 'Your wallet does not have enough funds to cover gas fees.';
+  if (/nonce too low/i.test(msg)) return 'Please wait for your previous transaction to confirm, then try again.';
+  if (/already registered/i.test(msg)) return 'This wallet is already registered as an agent.';
+  if (/timed out/i.test(msg)) return 'The network is slow. Please try again in a moment.';
+  if (/execution reverted|transaction reverted/i.test(msg)) return 'Transaction rejected by the smart contract (e.g., insufficient balance, unauthorized action, or invalid task state).';
+  return msg.length > 120 ? 'Something went wrong: ' + msg.slice(0, 120) + '...' : 'Something went wrong: ' + msg;
+}
+
+/* =================================================================
+   WALLET DISCONNECT
+   ================================================================= */
+function disconnectWallet() {
+  userAccount = null;
+  document.getElementById('walletDisplay').classList.add('hidden');
+  document.getElementById('networkBadge').classList.add('hidden');
+  document.getElementById('disconnectBtn').classList.add('hidden');
+  var btn = document.getElementById('connectBtn');
+  btn.textContent = 'Connect Wallet'; btn.disabled = false; btn.style.opacity = '1';
+  document.getElementById('dashboardNotConnected').classList.remove('hidden');
+  document.getElementById('dashboardContent').classList.add('hidden');
+  showToast('Wallet disconnected', 'info');
+}
+
+/* =================================================================
+   CLEAR FILTERS / FILTER BY TAG
+   ================================================================= */
+function clearFilters() {
+  document.getElementById('filterSearch').value = '';
+  document.getElementById('filterRating').value = '0';
+  document.getElementById('filterPrice').value = '0';
+  document.getElementById('filterSort').value = 'default';
+  applyFilters();
+}
+function filterByTag(tag) {
+  document.getElementById('filterSearch').value = tag;
+  applyFilters();
+  document.getElementById('sectionMarketplace').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* =================================================================
+   AGENT DETAIL MODAL
+   ================================================================= */
+function openAgentDetail(agentAddr) {
+  var ag = allAgents.find(function(a) { return a.address.toLowerCase() === agentAddr.toLowerCase(); });
+  if (!ag) return;
+  document.getElementById('detailAgentName').textContent = ag.name;
+  document.getElementById('detailAgentAddr').textContent = agentAddr;
+  document.getElementById('detailAgentDesc').textContent = ag.description || 'No description provided.';
+  var price = (Number(ag.pricePerTask) / 1e6).toFixed(2);
+  document.getElementById('detailAgentPrice').textContent = price + ' USDC';
+  var sb = document.getElementById('detailAgentStatus');
+  sb.className = 'agent-status-badge ' + (ag.active ? 'active' : 'inactive');
+  sb.innerHTML = '<span class="agent-status-dot ' + (ag.active ? 'active' : 'inactive') + '"></span>' + (ag.active ? 'Active' : 'Inactive');
+  var ep = document.getElementById('detailAgentEndpoint');
+  ep.href = ag.endpoint || '#'; ep.textContent = ag.endpoint || 'N/A';
+  document.getElementById('detailAgentTags').innerHTML = ag.skillTags.map(function(t) { return '<span class="skill-tag">' + escapeHtml(t) + '</span>'; }).join('');
+  document.getElementById('detailStatRating').textContent = ag.rating > 0 ? ag.rating.toFixed(1) + '/5' : 'N/A';
+  document.getElementById('detailStatTasks').textContent = ag.totalTasks;
+  document.getElementById('detailStatEarned').textContent = (Number(ag.totalEarned) / 1e6).toFixed(2);
+  if (ag.registeredAt > 0) {
+    var diff = Math.floor(Date.now() / 1000) - ag.registeredAt;
+    document.getElementById('detailStatUptime').textContent = diff < 3600 ? Math.floor(diff/60)+'m' : diff < 86400 ? Math.floor(diff/3600)+'h' : Math.floor(diff/86400)+'d';
+  } else { document.getElementById('detailStatUptime').textContent = '--'; }
+  // Reviews - show reputation summary
+  var revEl = document.getElementById('detailAgentReviews');
+  if (ag.rating > 0) {
+    revEl.innerHTML = '<div style="padding:12px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px"><div>' + renderStars(ag.rating) + ' <span style="color:var(--text-muted)">' + ag.ratingCount + ' rating(s) · ' + ag.totalTasks + ' task(s)</span></div><div style="color:var(--text-secondary);font-size:.85rem;margin-top:6px">Average: ' + ag.rating.toFixed(1) + '/5 · Earned: ' + (Number(ag.totalEarned)/1e6).toFixed(2) + ' USDC</div></div>';
+  } else { revEl.innerHTML = '<span style="color:var(--text-muted)">No reviews yet.</span>'; }
+  document.getElementById('detailHireBtn').setAttribute('onclick', "closeAgentDetail();openHireModal('" + agentAddr + "')");
+  document.getElementById('agentDetailModal').classList.remove('hidden');
+}
+function closeAgentDetail() {
+  document.getElementById('agentDetailModal').classList.add('hidden');
+}
 </script>
 </body>
 </html>
