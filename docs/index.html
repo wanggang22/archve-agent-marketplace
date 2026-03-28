@@ -2472,31 +2472,44 @@ async function runX402Flow(apiPath, amountMicroUSDC, taskName) {
     if (s === 'error') { steps[i].classList.remove('active'); steps[i].querySelector('.nanopay-step-icon').textContent = '\u2717'; steps[i].querySelector('.nanopay-step-icon').style.borderColor = 'var(--danger)'; steps[i].querySelector('.nanopay-step-icon').style.color = 'var(--danger)'; }
   }
   try {
-    // Step 1: Sign payment (EIP-712, zero gas)
+    // Step 1: Request 402 to get payment requirements from Gateway
     markStep(0, 'active');
+    let qp = '';
+    if (apiPath === '/api/analyze') qp = '?q=' + encodeURIComponent('What are the current trends in AI agent marketplaces?');
+    else if (apiPath === '/api/translate') qp = '?text=' + encodeURIComponent('Hello, this is a test of the ArcAgent x402 nanopayment system.') + '&to=auto';
+    else if (apiPath === '/api/code') qp = '?q=' + encodeURIComponent('Write a function to check if a number is prime') + '&lang=javascript';
+    const fullUrl = X402_AGENT_SERVER + apiPath + qp;
+
+    const initResp = await fetch(fullUrl);
+    if (initResp.status !== 402) { markStep(0, 'error'); showToast('Unexpected response: HTTP ' + initResp.status, 'error'); document.getElementById('nanopayCloseBtn').style.display = 'block'; return; }
+
+    const payReqHeader = initResp.headers.get('payment-required');
+    if (!payReqHeader) { markStep(0, 'error'); showToast('No payment-required header from server', 'error'); document.getElementById('nanopayCloseBtn').style.display = 'block'; return; }
+
+    const payReq = JSON.parse(atob(payReqHeader));
+    const accept = payReq.accepts[0];
+    const extra = accept.extra || {};
+
+    // Sign EIP-712 TransferWithAuthorization using params from server
     const nonce = '0x' + Array.from(crypto.getRandomValues(new Uint8Array(32))).map(b => b.toString(16).padStart(2, '0')).join('');
     const validBefore = Math.floor(Date.now() / 1000) + 300;
     const msgParams = JSON.stringify({
       types: { EIP712Domain: [{name:'name',type:'string'},{name:'version',type:'string'},{name:'chainId',type:'uint256'},{name:'verifyingContract',type:'address'}], TransferWithAuthorization: [{name:'from',type:'address'},{name:'to',type:'address'},{name:'value',type:'uint256'},{name:'validAfter',type:'uint256'},{name:'validBefore',type:'uint256'},{name:'nonce',type:'bytes32'}] },
       primaryType: 'TransferWithAuthorization',
-      domain: { name: 'GatewayWalletBatched', version: '1', chainId: ARC_CHAIN_ID_DEC, verifyingContract: X402_GATEWAY_WALLET },
-      message: { from: userAccount, to: X402_AGENT_ADDRESS, value: String(amountMicroUSDC), validAfter: '0', validBefore: String(validBefore), nonce: nonce },
+      domain: { name: extra.name || 'GatewayWalletBatched', version: extra.version || '1', chainId: ARC_CHAIN_ID_DEC, verifyingContract: extra.verifyingContract || X402_GATEWAY_WALLET },
+      message: { from: userAccount, to: accept.payTo, value: accept.amount, validAfter: '0', validBefore: String(validBefore), nonce: nonce },
     });
     const signature = await window.ethereum.request({ method: 'eth_signTypedData_v4', params: [userAccount, msgParams] });
     markStep(0, 'done');
 
-    // Step 2: Build x402 request
+    // Step 2: Build x402 payment payload
     markStep(1, 'active');
-    const paymentPayload = { x402Version: 1, scheme: 'exact', network: 'eip155:' + ARC_CHAIN_ID_DEC, payload: { signature, authorization: { from: userAccount, to: X402_AGENT_ADDRESS, value: String(amountMicroUSDC), validAfter: '0', validBefore: String(validBefore), nonce } } };
-    let qp = '';
-    if (apiPath === '/api/analyze') qp = '?q=' + encodeURIComponent('What are the current trends in AI agent marketplaces?');
-    else if (apiPath === '/api/translate') qp = '?text=' + encodeURIComponent('Hello, this is a test of the ArcAgent x402 nanopayment system.') + '&to=auto';
-    else if (apiPath === '/api/code') qp = '?q=' + encodeURIComponent('Write a function to check if a number is prime') + '&lang=javascript';
+    const paymentPayload = { x402Version: payReq.x402Version || 2, scheme: accept.scheme, network: accept.network, payload: { signature, authorization: { from: userAccount, to: accept.payTo, value: accept.amount, validAfter: '0', validBefore: String(validBefore), nonce } } };
     markStep(1, 'done');
 
-    // Step 3: Send to agent + Gateway settles
+    // Step 3: Send to agent with payment signature
     markStep(2, 'active');
-    const resp = await fetch(X402_AGENT_SERVER + apiPath + qp, { headers: { 'PAYMENT-SIGNATURE': btoa(JSON.stringify(paymentPayload)) } });
+    const resp = await fetch(fullUrl, { headers: { 'PAYMENT-SIGNATURE': btoa(JSON.stringify(paymentPayload)) } });
     markStep(2, 'done');
 
     // Step 4: Show result
