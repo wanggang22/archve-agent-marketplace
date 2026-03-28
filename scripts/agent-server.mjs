@@ -418,6 +418,16 @@ async function askClaude(systemPrompt, userMessage) {
 const app = express();
 app.use(express.json());
 
+// CORS — allow frontend (arcagent.xyz) to call x402 API endpoints
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, PAYMENT-SIGNATURE, X-PAYMENT');
+  res.setHeader('Access-Control-Expose-Headers', 'PAYMENT-REQUIRED, PAYMENT-RESPONSE');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
+
 // ── x402 Paid API Endpoints ─────────────────────────────────────────────────
 
 app.get('/api/analyze', gateway.require(X402_PRICES['/api/analyze']), async (req, res) => {
