@@ -1086,6 +1086,35 @@ nav{display:flex;align-items:center;gap:8px}
       </div>
     </div>
 
+    <!-- Gateway Balance & Deposit/Withdraw -->
+    <div style="max-width:480px;margin:32px auto 0;padding:24px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg)">
+      <h3 style="font-size:.95rem;font-weight:700;margin-bottom:16px;color:var(--text-primary)">Gateway Wallet Balance</h3>
+      <div id="gatewayBalanceArea">
+        <div id="gatewayNotConnected" style="color:var(--text-muted);font-size:.85rem;margin-bottom:12px">Connect wallet to view Gateway balance</div>
+        <div id="gatewayConnected" class="hidden">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <div>
+              <div style="font-size:.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em">Available</div>
+              <div id="gatewayBalance" style="font-size:1.4rem;font-weight:700;color:var(--cyan)">-- USDC</div>
+            </div>
+            <div>
+              <div style="font-size:.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em">Wallet</div>
+              <div id="walletUsdcBalance" style="font-size:1.4rem;font-weight:700;color:var(--text-primary)">-- USDC</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <input class="form-input" type="number" id="gatewayAmount" placeholder="Amount (USDC)" step="0.01" min="0" style="flex:1;padding:10px 14px;font-size:.88rem">
+            <button class="btn btn-primary btn-sm" onclick="gatewayDeposit()" id="depositBtn">Deposit</button>
+            <button class="btn btn-secondary btn-sm" onclick="gatewayWithdraw()" id="withdrawBtn">Withdraw</button>
+          </div>
+          <div id="gatewayStatus" style="font-size:.82rem;color:var(--text-muted)"></div>
+          <div style="font-size:.72rem;color:var(--text-muted);margin-top:8px;line-height:1.5">
+            Deposit USDC into Circle Gateway to use x402 nanopayments (zero gas). Withdraw anytime.
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Nanopay Stats -->
     <div class="nanopay-stats">
       <div class="nanopay-stat">
@@ -1554,7 +1583,7 @@ function showSection(name) {
   if (name === 'marketplace') window.scrollTo({ top: 0, behavior: 'smooth' });
   if (name === 'dashboard') loadDashboard();
   if (name === 'marketplace') { loadAgents(); loadStats(); }
-  if (name === 'nanopayments') loadNanopayStats();
+  if (name === 'nanopayments') { loadNanopayStats(); loadGatewayBalance(); }
 }
 
 /* =================================================================
@@ -2596,6 +2625,104 @@ async function runX402Flow(apiPath, amountMicroUSDC, taskName) {
 
 function closeNanopay() {
   document.getElementById('nanopayModalContainer').innerHTML = '';
+}
+
+/* =================================================================
+   GATEWAY DEPOSIT / WITHDRAW
+   ================================================================= */
+async function loadGatewayBalance() {
+  if (!userAccount) {
+    document.getElementById('gatewayNotConnected').classList.remove('hidden');
+    document.getElementById('gatewayConnected').classList.add('hidden');
+    return;
+  }
+  document.getElementById('gatewayNotConnected').classList.add('hidden');
+  document.getElementById('gatewayConnected').classList.remove('hidden');
+
+  try {
+    // Wallet USDC balance
+    const walBal = await rpcCall(CONTRACTS.USDC, SEL.balanceOf + encodeAddress(userAccount));
+    document.getElementById('walletUsdcBalance').textContent = (Number(BigInt(walBal)) / 1e6).toFixed(2) + ' USDC';
+
+    // Gateway balance (balanceOf on Gateway Wallet contract)
+    const gwBal = await rpcCall(X402_GATEWAY_WALLET, SEL.balanceOf + encodeAddress(userAccount));
+    document.getElementById('gatewayBalance').textContent = (Number(BigInt(gwBal)) / 1e6).toFixed(4) + ' USDC';
+  } catch(e) {
+    document.getElementById('gatewayBalance').textContent = '-- USDC';
+    document.getElementById('walletUsdcBalance').textContent = '-- USDC';
+  }
+}
+
+async function gatewayDeposit() {
+  if (!userAccount) { showToast('Connect wallet first', 'error'); return; }
+  const amountStr = document.getElementById('gatewayAmount').value;
+  const amount = Math.round(parseFloat(amountStr) * 1e6);
+  if (!amount || amount <= 0) { showToast('Enter a valid amount', 'error'); return; }
+
+  const btn = document.getElementById('depositBtn');
+  const status = document.getElementById('gatewayStatus');
+
+  try {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>';
+    status.textContent = 'Step 1/2: Approving USDC...';
+
+    // Step 1: Approve Gateway Wallet to spend USDC
+    const approveData = SEL.approve + encodeAddress(X402_GATEWAY_WALLET) + encodeUint(amount);
+    const approveTx = await sendTx(CONTRACTS.USDC, approveData);
+    await waitForTx(approveTx);
+
+    status.textContent = 'Step 2/2: Depositing to Gateway...';
+
+    // Step 2: Deposit — call deposit(uint256) on Gateway Wallet
+    // deposit function selector: 0xb6b55f25
+    const depositData = '0xb6b55f25' + encodeUint(amount);
+    const depositTx = await sendTx(X402_GATEWAY_WALLET, depositData);
+    await waitForTx(depositTx);
+
+    showToast('Deposited ' + amountStr + ' USDC to Gateway!', 'success', depositTx);
+    status.textContent = 'Deposit complete!';
+    document.getElementById('gatewayAmount').value = '';
+    loadGatewayBalance();
+  } catch(e) {
+    showToast('Deposit failed: ' + friendlyError(e), 'error');
+    status.textContent = 'Deposit failed: ' + friendlyError(e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Deposit';
+  }
+}
+
+async function gatewayWithdraw() {
+  if (!userAccount) { showToast('Connect wallet first', 'error'); return; }
+  const amountStr = document.getElementById('gatewayAmount').value;
+  const amount = Math.round(parseFloat(amountStr) * 1e6);
+  if (!amount || amount <= 0) { showToast('Enter a valid amount', 'error'); return; }
+
+  const btn = document.getElementById('withdrawBtn');
+  const status = document.getElementById('gatewayStatus');
+
+  try {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>';
+    status.textContent = 'Withdrawing from Gateway...';
+
+    // withdraw(uint256) selector: 0x2e1a7d4d
+    const withdrawData = '0x2e1a7d4d' + encodeUint(amount);
+    const withdrawTx = await sendTx(X402_GATEWAY_WALLET, withdrawData);
+    await waitForTx(withdrawTx);
+
+    showToast('Withdrew ' + amountStr + ' USDC from Gateway!', 'success', withdrawTx);
+    status.textContent = 'Withdrawal complete!';
+    document.getElementById('gatewayAmount').value = '';
+    loadGatewayBalance();
+  } catch(e) {
+    showToast('Withdrawal failed: ' + friendlyError(e), 'error');
+    status.textContent = 'Withdrawal failed: ' + friendlyError(e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Withdraw';
+  }
 }
 
 /* =================================================================
