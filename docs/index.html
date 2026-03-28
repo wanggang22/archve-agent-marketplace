@@ -2677,9 +2677,9 @@ async function gatewayDeposit() {
 
     status.textContent = 'Step 2/2: Depositing to Gateway...';
 
-    // Step 2: Deposit — call deposit(uint256) on Gateway Wallet
-    // deposit function selector: 0xb6b55f25
-    const depositData = '0xb6b55f25' + encodeUint(amount);
+    // Step 2: Deposit — call deposit(address token, uint256 value) on Gateway Wallet
+    // deposit(address,uint256) selector: 0x47e7ef24
+    const depositData = '0x47e7ef24' + encodeAddress(CONTRACTS.USDC) + encodeUint(amount);
     const depositTx = await sendTx(X402_GATEWAY_WALLET, depositData);
     await waitForTx(depositTx);
 
@@ -2710,8 +2710,8 @@ async function gatewayWithdraw() {
     btn.innerHTML = '<span class="spinner"></span>';
     status.textContent = 'Withdrawing from Gateway...';
 
-    // withdraw(uint256) selector: 0x2e1a7d4d
-    const withdrawData = '0x2e1a7d4d' + encodeUint(amount);
+    // withdraw(address token) selector: 0x51cff8d9 — withdraws full balance
+    const withdrawData = '0x51cff8d9' + encodeAddress(CONTRACTS.USDC);
     const withdrawTx = await sendTx(X402_GATEWAY_WALLET, withdrawData);
     await waitForTx(withdrawTx);
 
