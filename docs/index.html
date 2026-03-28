@@ -1105,11 +1105,14 @@ nav{display:flex;align-items:center;gap:8px}
           <div style="display:flex;gap:8px;margin-bottom:12px">
             <input class="form-input" type="number" id="gatewayAmount" placeholder="Amount (USDC)" step="0.01" min="0" style="flex:1;padding:10px 14px;font-size:.88rem">
             <button class="btn btn-primary btn-sm" onclick="gatewayDeposit()" id="depositBtn">Deposit</button>
-            <button class="btn btn-secondary btn-sm" onclick="gatewayWithdraw()" id="withdrawBtn">Withdraw</button>
+            <button class="btn btn-secondary btn-sm" onclick="gatewayWithdraw()" id="withdrawBtn">Initiate Withdraw</button>
+            <button class="btn btn-secondary btn-sm" onclick="gatewayCompleteWithdraw()" id="completeWithdrawBtn" style="background:rgba(34,197,94,.15);border-color:rgba(34,197,94,.3);color:var(--success)">Complete Withdraw</button>
           </div>
           <div id="gatewayStatus" style="font-size:.82rem;color:var(--text-muted)"></div>
           <div style="font-size:.72rem;color:var(--text-muted);margin-top:8px;line-height:1.5">
-            Deposit USDC into Circle Gateway to use x402 nanopayments (zero gas). Withdrawal uses 7-day trustless timelock for security.
+            <strong>Deposit:</strong> USDC into Gateway for x402 zero-gas payments.<br>
+            <strong>Initiate Withdraw:</strong> Start 7-day timelock.<br>
+            <strong>Complete Withdraw:</strong> After 7 days, claim USDC back to wallet.
           </div>
         </div>
       </div>
@@ -2726,15 +2729,44 @@ async function gatewayWithdraw() {
     await waitForTx(withdrawTx);
 
     showToast('Withdrawal initiated! Complete after 7-day timelock.', 'success', withdrawTx);
-    status.innerHTML = 'Withdrawal initiated for ' + amountStr + ' USDC. After 7 days, return here to complete withdrawal by calling withdraw.';
+    status.innerHTML = 'Withdrawal initiated for ' + amountStr + ' USDC. After 7 days, click "Complete Withdraw" to claim.';
     document.getElementById('gatewayAmount').value = '';
     loadGatewayBalance();
   } catch(e) {
-    showToast('Withdrawal failed: ' + friendlyError(e), 'error');
-    status.textContent = 'Withdrawal failed: ' + friendlyError(e);
+    showToast('Initiate withdrawal failed: ' + friendlyError(e), 'error');
+    status.textContent = 'Failed: ' + friendlyError(e);
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Withdraw';
+    btn.textContent = 'Initiate Withdraw';
+  }
+}
+
+async function gatewayCompleteWithdraw() {
+  if (!userAccount) { showToast('Connect wallet first', 'error'); return; }
+  if (!confirm('Complete withdrawal? This will transfer all unlocked USDC back to your wallet.')) return;
+
+  var btn = document.getElementById('completeWithdrawBtn');
+  var status = document.getElementById('gatewayStatus');
+
+  try {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>';
+    status.textContent = 'Completing withdrawal...';
+
+    // withdraw(address token) selector: 0x51cff8d9
+    var withdrawData = '0x51cff8d9' + encodeAddress(CONTRACTS.USDC);
+    var withdrawTx = await sendTx(X402_GATEWAY_WALLET, withdrawData);
+    await waitForTx(withdrawTx);
+
+    showToast('Withdrawal complete! USDC returned to wallet.', 'success', withdrawTx);
+    status.textContent = 'Withdrawal complete!';
+    loadGatewayBalance();
+  } catch(e) {
+    showToast('Complete withdrawal failed: ' + friendlyError(e), 'error');
+    status.textContent = 'Failed: ' + friendlyError(e) + ' (7-day timelock may not have passed yet)';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Complete Withdraw';
   }
 }
 
